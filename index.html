@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Powerloom Order Tracker</title>
+<meta name="description" content="Order and billing tracker for a powerloom unit. Orders, customers, invoices and pending payments. Built by Asra Iram." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="theme.css">
+<style>
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:18px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-top:2px solid var(--cyan);padding:14px 15px}
+.kpi.warn{border-top-color:var(--warn)}
+.kpi.ok{border-top-color:var(--ok)}
+.kpi .k{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin:0 0 5px}
+.kpi .v{font-family:"Archivo",ui-sans-serif,system-ui,sans-serif;font-size:1.34rem;font-weight:800;margin:0;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:0.77rem;color:var(--muted);margin:3px 0 0}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.toolbar > div{flex:1 1 150px}
+.tablewrap{overflow:auto;border:1px solid var(--line);background:var(--surface)}
+.pill{
+  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:0.66rem;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;border:1px solid;
+}
+.p-pending{color:var(--warn);border-color:rgba(224,163,58,0.5);background:rgba(224,163,58,0.09)}
+.p-weaving{color:var(--cyan);border-color:rgba(86,226,233,0.45);background:rgba(86,226,233,0.08)}
+.p-ready{color:var(--mag);border-color:rgba(196,92,220,0.45);background:rgba(196,92,220,0.09)}
+.p-delivered{color:var(--ok);border-color:rgba(63,185,127,0.45);background:rgba(63,185,127,0.09)}
+.p-paid{color:var(--ok);border-color:rgba(63,185,127,0.45);background:rgba(63,185,127,0.09)}
+.p-unpaid{color:var(--warn);border-color:rgba(224,163,58,0.5);background:rgba(224,163,58,0.09)}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.inv{background:var(--surface);border:1px solid var(--line2);padding:22px;margin-top:16px;display:none}
+.inv.show{display:block}
+.inv h3{font-family:"Archivo",ui-sans-serif,system-ui,sans-serif;margin:0 0 4px;font-size:1.15rem}
+.inv .meta{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:0.74rem;color:var(--faint);margin:0 0 16px}
+.inv .tot{display:flex;justify-content:space-between;border-top:1px solid var(--line);margin-top:12px;padding-top:12px;font-family:"Archivo",ui-sans-serif,system-ui,sans-serif;font-weight:800;font-size:1.05rem}
+.stack-note{background:var(--surface2);border-left:3px solid var(--mag);padding:13px 15px;margin-top:16px;font-size:0.88rem;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">POWERLOOM <span>TRACKER</span></a>
+    <div class="links">
+      <a href="#orders">Orders</a>
+      <a href="#add">New order</a>
+      <a href="https://asra-iram.github.io">Portfolio</a>
+      <a href="https://github.com/asra-iram/powerloom-order-tracker">Source</a>
+    </div>
+  </div>
+</nav>
+
+<header class="top" id="top">
+  <div class="wrap in">
+    <p class="kick">Project 02</p>
+    <h1>Powerloom Order and Billing Tracker</h1>
+    <p>Malegaon runs on powerloom units, and most of them track orders in a notebook. This keeps the order from loom to delivery, works out what each customer still owes, and prints an invoice.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="kpis">
+    <div class="kpi"><p class="k">Open orders</p><p class="v" id="kOpen">-</p><p class="s">not yet delivered</p></div>
+    <div class="kpi"><p class="k">Meters in production</p><p class="v" id="kMeters">-</p><p class="s">across open orders</p></div>
+    <div class="kpi ok"><p class="k">Billed this list</p><p class="v" id="kBilled">-</p><p class="s">total order value</p></div>
+    <div class="kpi warn"><p class="k">Payment pending</p><p class="v" id="kDue">-</p><p class="s" id="kDueSub">unpaid invoices</p></div>
+  </div>
+
+  <div class="bar" id="orders"><span class="n">// 01</span><h2>Orders</h2></div>
+  <div class="toolbar">
+    <div>
+      <label for="q">Search customer or order</label>
+      <input id="q" type="text" placeholder="type to filter" />
+    </div>
+    <div>
+      <label for="fStatus">Order status</label>
+      <select id="fStatus">
+        <option value="">All</option>
+        <option>Pending</option>
+        <option>Weaving</option>
+        <option>Ready</option>
+        <option>Delivered</option>
+      </select>
+    </div>
+    <div>
+      <label for="fPay">Payment</label>
+      <select id="fPay">
+        <option value="">All</option>
+        <option>Paid</option>
+        <option>Unpaid</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th><th>Customer</th><th>Fabric</th>
+          <th class="num">Meters</th><th class="num">Rate</th><th class="num">Amount</th>
+          <th>Status</th><th>Payment</th><th>Delivery</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <div class="inv" id="inv"></div>
+
+  <div class="bar" id="add"><span class="n">// 02</span><h2>Add an order</h2></div>
+  <div class="panel">
+    <div class="form-grid">
+      <div><label for="nCust">Customer</label><input id="nCust" type="text" placeholder="Shaikh Textiles" /></div>
+      <div><label for="nFab">Fabric</label><input id="nFab" type="text" placeholder="Grey poplin" /></div>
+      <div><label for="nMet">Meters</label><input id="nMet" type="number" value="1000" min="1" step="50" /></div>
+      <div><label for="nRate">Rate per meter (INR)</label><input id="nRate" type="number" value="42" min="1" step="0.5" /></div>
+      <div><label for="nDate">Delivery date</label><input id="nDate" type="date" /></div>
+      <div><label for="nStat">Status</label><select id="nStat"><option>Pending</option><option>Weaving</option><option>Ready</option><option>Delivered</option></select></div>
+    </div>
+    <div class="actions">
+      <button id="addBtn">Add order</button>
+      <button class="ghost" id="csvBtn">Export CSV</button>
+      <button class="ghost" id="resetBtn">Reset to sample data</button>
+    </div>
+    <p class="note" id="err"></p>
+  </div>
+
+  <div class="stack-note">
+    <strong>About this demo.</strong> The live version here runs entirely in the browser so it can be hosted on GitHub Pages, and it starts with sample orders. The repository also contains the real PHP and MySQL version: the database schema is in <code>backend/schema.sql</code> and the API endpoints are in <code>backend/api.php</code>.
+  </div>
+
+  <footer>Built by Asra Iram &middot; asra-iram.github.io</footer>
+</main>
+
+<script>
+var F = new Intl.NumberFormat('en-IN', {maximumFractionDigits:0});
+function money(n){ return 'INR ' + F.format(Math.round(n)); }
+
+var SAMPLE = [
+  {id:'PL-1041', cust:'Shaikh Textiles', fab:'Grey poplin',     met:4200, rate:41.5, stat:'Delivered', paid:true,  due:'2026-09-12'},
+  {id:'PL-1042', cust:'Ansari Fabrics',  fab:'Cotton shirting', met:2600, rate:53.0, stat:'Delivered', paid:false, due:'2026-09-18'},
+  {id:'PL-1043', cust:'Noor Trading',    fab:'Grey poplin',     met:6000, rate:40.0, stat:'Weaving',   paid:false, due:'2026-10-04'},
+  {id:'PL-1044', cust:'Shaikh Textiles', fab:'Sheeting 63in',   met:3200, rate:47.5, stat:'Ready',     paid:false, due:'2026-09-30'},
+  {id:'PL-1045', cust:'Khan Handloom',   fab:'Cotton shirting', met:1800, rate:55.0, stat:'Pending',   paid:false, due:'2026-10-11'},
+  {id:'PL-1046', cust:'Noor Trading',    fab:'Grey poplin',     met:5400, rate:40.5, stat:'Weaving',   paid:false, due:'2026-10-09'},
+  {id:'PL-1047', cust:'Ansari Fabrics',  fab:'Sheeting 63in',   met:2200, rate:48.0, stat:'Delivered', paid:true,  due:'2026-09-08'}
+];
+
+var orders = SAMPLE.slice();
+var nextId = 1048;
+
+function amount(o){ return o.met * o.rate; }
+function pill(text, cls){ return '<span class="pill ' + cls + '">' + text + '</span>'; }
+
+function visible(){
+  var q = document.getElementById('q').value.trim().toLowerCase();
+  var st = document.getElementById('fStatus').value;
+  var pay = document.getElementById('fPay').value;
+  return orders.filter(function(o){
+    if (q && (o.cust + ' ' + o.id + ' ' + o.fab).toLowerCase().indexOf(q) === -1) return false;
+    if (st && o.stat !== st) return false;
+    if (pay === 'Paid' && !o.paid) return false;
+    if (pay === 'Unpaid' && o.paid) return false;
+    return true;
+  });
+}
+
+function render(){
+  var list = visible();
+  document.getElementById('rows').innerHTML = list.map(function(o, i){
+    return '<tr>' +
+      '<td>' + o.id + '</td>' +
+      '<td>' + o.cust + '</td>' +
+      '<td>' + o.fab + '</td>' +
+      '<td class="num">' + F.format(o.met) + '</td>' +
+      '<td class="num">' + o.rate.toFixed(2) + '</td>' +
+      '<td class="num">' + F.format(Math.round(amount(o))) + '</td>' +
+      '<td>' + pill(o.stat, 'p-' + o.stat.toLowerCase()) + '</td>' +
+      '<td>' + pill(o.paid ? 'Paid' : 'Unpaid', o.paid ? 'p-paid' : 'p-unpaid') + '</td>' +
+      '<td>' + o.due + '</td>' +
+      '<td><button class="ghost" data-inv="' + o.id + '" style="padding:4px 9px;font-size:0.72rem">Invoice</button></td>' +
+      '</tr>';
+  }).join('');
+
+  var open = orders.filter(function(o){ return o.stat !== 'Delivered'; });
+  var unpaid = orders.filter(function(o){ return !o.paid; });
+  document.getElementById('kOpen').textContent = open.length;
+  document.getElementById('kMeters').textContent = F.format(open.reduce(function(s,o){ return s + o.met; }, 0));
+  document.getElementById('kBilled').textContent = money(orders.reduce(function(s,o){ return s + amount(o); }, 0));
+  document.getElementById('kDue').textContent = money(unpaid.reduce(function(s,o){ return s + amount(o); }, 0));
+  document.getElementById('kDueSub').textContent = unpaid.length + ' unpaid invoice' + (unpaid.length === 1 ? '' : 's');
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-inv]'), function(b){
+    b.addEventListener('click', function(){ showInvoice(b.getAttribute('data-inv')); });
+  });
+}
+
+function showInvoice(id){
+  var o = orders.filter(function(x){ return x.id === id; })[0];
+  if (!o) return;
+  var gst = amount(o) * 0.05;
+  var box = document.getElementById('inv');
+  box.className = 'inv show';
+  box.innerHTML =
+    '<h3>Invoice ' + o.id + '</h3>' +
+    '<p class="meta">' + o.cust + ' &middot; delivery ' + o.due + ' &middot; ' + (o.paid ? 'PAID' : 'PAYMENT PENDING') + '</p>' +
+    '<table><thead><tr><th>Item</th><th class="num">Meters</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>' +
+    '<tbody><tr><td>' + o.fab + '</td><td class="num">' + F.format(o.met) + '</td><td class="num">' + o.rate.toFixed(2) +
+    '</td><td class="num">' + F.format(Math.round(amount(o))) + '</td></tr>' +
+    '<tr><td>GST at 5 percent</td><td class="num"></td><td class="num"></td><td class="num">' + F.format(Math.round(gst)) + '</td></tr></tbody></table>' +
+    '<div class="tot"><span>Total payable</span><span>' + money(amount(o) + gst) + '</span></div>';
+  box.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+document.getElementById('addBtn').addEventListener('click', function(){
+  var cust = document.getElementById('nCust').value.trim();
+  var fab = document.getElementById('nFab').value.trim();
+  var met = parseFloat(document.getElementById('nMet').value);
+  var rate = parseFloat(document.getElementById('nRate').value);
+  var due = document.getElementById('nDate').value;
+  var stat = document.getElementById('nStat').value;
+  var err = document.getElementById('err');
+  if (!cust || !fab || !(met > 0) || !(rate > 0) || !due) {
+    err.textContent = 'Fill in customer, fabric, meters, rate and a delivery date.';
+    return;
+  }
+  err.textContent = '';
+  orders.unshift({id:'PL-' + (nextId++), cust:cust, fab:fab, met:met, rate:rate, stat:stat, paid:false, due:due});
+  document.getElementById('nCust').value = '';
+  document.getElementById('nFab').value = '';
+  render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', function(){
+  orders = SAMPLE.slice(); nextId = 1048;
+  document.getElementById('inv').className = 'inv';
+  render();
+});
+
+document.getElementById('csvBtn').addEventListener('click', function(){
+  var lines = ['Order,Customer,Fabric,Meters,Rate,Amount,Status,Payment,Delivery'];
+  visible().forEach(function(o){
+    lines.push([o.id, o.cust, o.fab, o.met, o.rate, Math.round(amount(o)), o.stat, o.paid ? 'Paid' : 'Unpaid', o.due].join(','));
+  });
+  var blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'powerloom-orders.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+});
+
+['q','fStatus','fPay'].forEach(function(id){
+  document.getElementById(id).addEventListener('input', render);
+});
+
+document.getElementById('nDate').value = '2026-10-15';
+render();
+</script>
+</body>
+</html>
